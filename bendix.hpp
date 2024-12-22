@@ -1,4 +1,5 @@
 #include <array>
+#include <stdio.h>
 #include "pico/stdlib.h"
 
 enum class CPU_STATE{OFF, BOOTINGREAD, RD_CMD, WAIT_TO_TRANFER, TRANSFER, WAIT_TO_RD};
@@ -24,9 +25,11 @@ class Drum{
 };
 
 struct Input{
-    Input();
+    Input(uart_inst_t *  uart, std::array<char, 256> &dataBuffer);
     void scan();
     volatile bool is_reset = false;
+    uart_inst_t * uart_;
+    std::array<char, 256> &dataBuffer_;
 };
 // struct Bell {
 //     Bell(uint32_t bellPin) : bellPin_{bellPin} {}
@@ -34,11 +37,13 @@ struct Input{
 //     uint32_t bellPin_;
 // };
 struct Output {
-    Output(std::array<uint32_t, NUM_PIXELS> &blinkenLights);
+    Output(std::array<uint32_t, NUM_PIXELS> &blinkenLights, uart_inst_t *  uart, std::array<char, 256> &dataBuffer);
     void ringBell();
     void update();
-    std::array<uint32_t, NUM_PIXELS> &blinkenLights_;
     bool bellOn = false;
+    std::array<uint32_t, NUM_PIXELS> &blinkenLights_;
+    uart_inst_t * uart_;
+    std::array<char, 256> &dataBuffer_;
 };
 
 class Processor {

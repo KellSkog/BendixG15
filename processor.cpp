@@ -4,7 +4,8 @@
 int add(int a, int b) {
     return a + b;
 }
-Input::Input(){
+Input::Input(uart_inst_t *  uart, std::array<char, 256> &dataBuffer) : 
+        uart_{uart}, dataBuffer_{dataBuffer}{
     gpio_init(RESET_BUTTON); // Direction is input by default
 }
 void Input::scan() {
@@ -21,9 +22,15 @@ void Input::scan() {
         is_reset = true;
         count = 0;
     }
+    if (uart_is_readable(uart_)) { 
+        dataBuffer_[0] = uart_getc(uart_);
+    }
 }
 
-Output::Output(std::array<uint32_t, NUM_PIXELS> &blinkenLights) : blinkenLights_{blinkenLights} {
+std::array<char, 256> dataBuffer;
+
+Output::Output(std::array<uint32_t, NUM_PIXELS> &blinkenLights, uart_inst_t *  uart, std::array<char, 256> &dataBuffer) : 
+        blinkenLights_{blinkenLights}, uart_{uart}, dataBuffer_{dataBuffer} {
     gpio_init(BELL_PIN);
     gpio_set_dir(BELL_PIN, GPIO_OUT);
     gpio_put(BELL_PIN, 0);
@@ -41,6 +48,10 @@ void Output::update() {
         count = 0;
         gpio_put(BELL_PIN, 0);
         bellOn = false;
+    }
+    if(dataBuffer_[0]) {
+        putchar(dataBuffer_[0]); // Echo received data to the console)
+        dataBuffer_[0] = static_cast<char>(0);
     }
 }
 inline uint32_t whitePix(uint32_t intensity) {

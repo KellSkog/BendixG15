@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include "hardware/dma.h"
 #include "hardware/pio.h"
@@ -9,15 +8,6 @@
 #include "bendix.hpp"
 
 constexpr bool IS_RGBW = false;
-
-// UART defines
-// By default the stdout UART is `uart0`, so we will use the second one
-constexpr uint BAUD_RATE = 115200;
-
-// Use pins 4 and 5 for UART1
-// Pins can be changed, see the GPIO function select table in the datasheet for information on GPIO assignments
-constexpr uint UART_TX_PIN = 4;
-constexpr uint UART_RX_PIN = 5;
 
 // Data will be copied from blinkenLights to dst
 std::array<uint32_t, NUM_PIXELS> blinkenLights;
@@ -36,19 +26,31 @@ bool repeating_timer_callback([[maybe_unused]] repeating_timer *t) {
     return true; // Keep repeating
 }
 
+void setup_uart() {
+    // UART defines
+    // By default the stdout UART is `uart0`, so we will use the second one
+    constexpr uint BAUD_RATE = 115200;
+
+    // Use pins 4 and 5 for UART1
+    // Pins can be changed, see the GPIO function select table in the datasheet for information on GPIO assignments
+    constexpr uint UART0_TX_PIN = 0;
+    constexpr uint UART0_RX_PIN = 1;
+    // constexpr uint UART1_TX_PIN = 4;
+    // constexpr uint UART1_RX_PIN = 5;
+
+    uart_init(uart0, BAUD_RATE);
+    gpio_set_function(UART0_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART0_RX_PIN, GPIO_FUNC_UART);
+    // uart_init(uart1, BAUD_RATE);
+    // gpio_set_function(UART1_TX_PIN, GPIO_FUNC_UART);
+    // gpio_set_function(UART1_RX_PIN, GPIO_FUNC_UART);
+}
+
 int main()
 {
     stdio_init_all();
 
-    // Set up our UART
-    uart_init(uart1, BAUD_RATE);
-    // Set the TX and RX pins by using the function select on the GPIO
-    // Set datasheet for more information on function select
-    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
-    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
-    
-    // Use some the various UART functions to send out data
-    // In a default system, printf will also output via the default UART
+    setup_uart();
     
     // Send out a string, with CR/LF conversions
     uart_puts(uart1, " Hello, UART!\r\n");
@@ -98,9 +100,11 @@ int main()
     // Start the first DMA transfer
     dma_channel_transfer_from_buffer_now(dma_chan, blinkenLights.data(), NUM_PIXELS);
 
+    std::array<char, 256> dataBuffer;
+    dataBuffer[0] = 0;
     Drum drum{};
-    Input input{};
-    Output output{blinkenLights};
+    Input input{uart0, dataBuffer};
+    Output output{blinkenLights, uart0, dataBuffer};
     Processor processor{drum, input, output};
 
     while (true) {
